@@ -325,7 +325,7 @@ prepare_model_for_prediction <- function(model, new_data, ...) {
 #' This function converts predictions from the linear predictor scale to the outcome scale
 #' for different model types like Poisson, Negative Binomial, or Binomial.
 #'
-#' @param predictions A numeric vector of predictions on the linear predictor scale.
+#' @param predictions A numeric vector of predictions on the linear predictor scale (or already on the outcome scale).
 #' @param model_type A character string indicating the model type: "poisson", "negbin", or "binomial".
 #' @param ... Additional arguments (currently ignored).
 #'
@@ -334,7 +334,7 @@ prepare_model_for_prediction <- function(model, new_data, ...) {
 convert_to_outcome_scale <- function(predictions, model_type, ...) {
   # Ensure model_type is a single character string
   model_type <- as.character(model_type)[1]
-
+  
   if (model_type == "poisson") {
     pred_outcome <- exp(predictions)
     pred_outcome[pred_outcome < 0] <- 0
@@ -344,12 +344,18 @@ convert_to_outcome_scale <- function(predictions, model_type, ...) {
     pred_outcome[pred_outcome < 0] <- 0
     return(pred_outcome)
   } else if (model_type == "binomial") {
-    pred_outcome <- plogis(predictions)
-    pred_outcome[pred_outcome < 0] <- 0
-    pred_outcome[pred_outcome > 1] <- 1
-    return(pred_outcome)
+    # If predictions are already between 0 and 1, assume they are on the outcome scale.
+    if (all(predictions >= 0 & predictions <= 1)) {
+      return(predictions)
+    } else {
+      pred_outcome <- plogis(predictions)
+      pred_outcome[pred_outcome < 0] <- 0
+      pred_outcome[pred_outcome > 1] <- 1
+      return(pred_outcome)
+    }
   } else {
     stop("Unsupported model_type. Please use one of: 'poisson', 'negbin', 'binomial'.")
   }
 }
+
 
