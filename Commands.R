@@ -1,0 +1,97 @@
+# Set working directory to your project folder
+setwd("C:/Users/ASUS/Desktop/Scoriverse")
+
+# Create Package and Initialize Git Infrastructure
+library(usethis)
+usethis::create_package("Scoriverse")
+usethis::use_git()
+usethis::use_readme_rmd()
+
+# -------------------------------------------------
+# Set up Documentation and DESCRIPTION Files
+# -------------------------------------------------
+library(roxygen2)
+usethis::use_description()
+usethis::use_roxygen_md()
+
+# Document the package and load all functions for development
+devtools::document()
+devtools::load_all()
+
+# -------------------------------------------------
+# Create R Script Files for Package Functions
+# -------------------------------------------------
+usethis::use_r("wrappers")
+usethis::use_r("prediction_extraction")
+usethis::use_r("scoring_functions")
+usethis::use_r("visualization")
+usethis::use_r("scoriverse_main")
+usethis::use_r("scoriverse-package")
+
+# -------------------------------------------------
+# Declare Package Dependencies and Imports
+# -------------------------------------------------
+usethis::use_package("marginaleffects")
+usethis::use_package("scoringRules")
+usethis::use_package("ggplot2")
+usethis::use_package("tidymodels", type = "Imports")  # tidymodels as an import
+
+# Additional imports from specific packages
+usethis::use_import_from("stats", "predict")
+usethis::use_import_from("ggplot2", c("aes", "ggplot", "geom_point", "geom_abline",
+                                      "geom_errorbar", "geom_hline", "labs"))
+
+# Additional tidymodels packages
+usethis::use_package("parsnip", type = "Imports")
+usethis::use_package("recipes", type = "Imports")
+usethis::use_package("rsample", type = "Imports")
+
+# -------------------------------------------------
+# (Optional) Load Import Library and Specify Imports
+# -------------------------------------------------
+# Note: Ensure the 'import' package is installed if you intend to use it.
+library(import)
+import::from(ggplot2, ggplot, aes, geom_point, geom_abline, geom_errorbar, geom_hline, labs)
+import::from(parsnip, linear_reg, fit)
+import::from(recipes, recipe, step_normalize, prep)
+import::from(rsample, initial_split, training, testing)
+import::from(workflows, workflow, add_model, add_recipe)
+import::from(tune, tune_grid, last_fit)
+
+# -------------------------------------------------
+# Set Up Testing Infrastructure
+# -------------------------------------------------
+usethis::use_testthat()
+devtools::test()
+
+# -------------------------------------------------
+# Build and Check the Package
+# -------------------------------------------------
+devtools::build()
+devtools::check()
+
+# -------------------------------------------------
+# Run Tests with a Summary Reporter
+# -------------------------------------------------
+library(testthat)
+library(reporter)
+result <- test_dir("tests/testthat", reporter = SummaryReporter$new())
+print(result)
+
+# -------------------------------------------------
+# Update and Install Dependencies
+# -------------------------------------------------
+update.packages(ask = FALSE, checkBuilt = TRUE)
+install.packages("tidymodels", dependencies = TRUE)
+
+# -------------------------------------------------
+# Set License and Final Checks
+# -------------------------------------------------
+usethis::use_mit_license("Juan Jauanda")
+run_scoriverse()  # Run the main function of your package
+
+# -------------------------------------------------
+# Install and Check Additional Package Versions
+# -------------------------------------------------
+install.packages("xfun")
+packageVersion("xfun")
