@@ -3,14 +3,9 @@ Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R: 
     person("Juan", "Jauanda", , "juanjayaj@gmail.com", role = c("aut", "cre"))
-Description: This package will provides a consistent, automated framework for 
-generating probabilistic predictions and evaluating models using proper 
-scoring rules.
-It will also allow users to evaluate diverse model types—from traditional 
-statistical models to machine learning algorithms—with a unified API.
-This package will support data scientists and business decision-makers by 
-incorporating uncertainty in model predictions and providing more robust 
-evaluation metrics than conventional point-based approaches.
+Description: This package will provides a consistent, automated framework for generating probabilistic predictions and evaluating models using proper scoring rules.
+It will also allow users to evaluate diverse model types—from traditional statistical models to machine learning algorithms—with a unified API.
+Also this package will support data scientists and business decision-makers by incorporating uncertainty in model predictions and providing more robust evaluation metrics than conventional point-based approaches.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
