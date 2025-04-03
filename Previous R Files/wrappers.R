@@ -46,12 +46,12 @@ standardize_predictions <- function(preds, n_expected = NULL) {
   } else {
     pred_vec <- as.numeric(preds)
   }
-  
+
   if (!is.null(n_expected) && length(pred_vec) != n_expected) {
     message(sprintf("Note: standardized prediction length (%d) does not match expected length (%d).",
                     length(pred_vec), n_expected))
   }
-  
+
   return(pred_vec)
 }
 
@@ -98,7 +98,7 @@ convert_predictions_to_matrix <- function(predictions) {
 #' @return A list of additional parameters.
 extract_additional_params <- function(model) {
   params <- list()
-  
+
   # For lm and glm models
   if (inherits(model, "lm") || inherits(model, "glm")) {
     fam <- tryCatch(stats::family(model)$family, error = function(e) NULL)
@@ -114,9 +114,9 @@ extract_additional_params <- function(model) {
       }
     }
   }
-  
+
   # Additional extraction logic for other model types can be added here
-  
+
   return(params)
 }
 
@@ -133,15 +133,15 @@ extract_additional_params <- function(model) {
 #' @export
 wrap_predict <- function(model, new_data = NULL, ...) {
   model <- validate_model_object(model)
-  
+
   # Filter out scoring-specific arguments.
   dots <- list(...)
   scoring_args <- c("pred_sd", "pred_prob", "lower", "upper")
   filtered_args <- dots[!names(dots) %in% scoring_args]
-  
+
   predictions <- NULL
   model_classes <- class(model)
-  
+
   # For model classes handled by marginaleffects::predictions()
   if (any(model_classes %in% c("lm", "glm", "gam", "merMod", "brmsfit"))) {
     predictions <- tryCatch({
@@ -149,7 +149,7 @@ wrap_predict <- function(model, new_data = NULL, ...) {
       if (!is.null(new_data)) {
         args$newdata <- new_data
       }
-      
+
       # -- Special Handling for brmsfit --
       if ("brmsfit" %in% model_classes) {
         if (is.null(filtered_args$type)) {
@@ -157,11 +157,11 @@ wrap_predict <- function(model, new_data = NULL, ...) {
           filtered_args$type <- "posterior_predict"
         }
       }
-      
+
       # Obtain initial predictions using marginaleffects::predictions()
       preds_raw <- do.call(marginaleffects::predictions, c(args, filtered_args))
       pred_vec <- standardize_predictions(preds_raw)
-      
+
       # -- Special Handling for gam Models with Poisson Family --
       if ("gam" %in% model_classes) {
         fam <- tryCatch(stats::family(model)$family, error = function(e) NULL)
@@ -171,13 +171,13 @@ wrap_predict <- function(model, new_data = NULL, ...) {
           pred_vec <- sapply(pred_vec, function(mu) rpois(n = 1, lambda = mu))
         }
       }
-      
+
       pred_vec
     }, error = function(e) {
       warning("marginaleffects::predictions() failed: ", e$message)
       NULL
     })
-    
+
     if (!is.null(predictions)) {
       if (!is.null(new_data) && length(predictions) != nrow(new_data)) {
         predictions <- predictions[seq_len(nrow(new_data))]
@@ -188,7 +188,7 @@ wrap_predict <- function(model, new_data = NULL, ...) {
       return(predictions)
     }
   }
-  
+
   # For tree-based models (randomForest, gbm, xgb.Booster, glmnet)
   if (any(model_classes %in% c("randomForest", "gbm", "xgb.Booster", "glmnet"))) {
     predictions <- tryCatch({
@@ -213,7 +213,7 @@ wrap_predict <- function(model, new_data = NULL, ...) {
       return(predictions)
     }
   }
-  
+
   # Fallback to the generic predict() method
   predictions <- tryCatch({
     if (!is.null(new_data)) {
@@ -228,7 +228,7 @@ wrap_predict <- function(model, new_data = NULL, ...) {
   }, error = function(e) {
     stop("Generic predict() failed: ", e$message)
   })
-  
+
   n_expected <- if (!is.null(new_data)) nrow(new_data) else length(predictions)
   predictions <- standardize_predictions(predictions, n_expected = n_expected)
   additional_params <- extract_additional_params(model)
@@ -249,7 +249,7 @@ wrap_predict <- function(model, new_data = NULL, ...) {
 #' @export
 wrap_scoring <- function(score_type, y_true, predictions, ...) {
   extra_args <- list(...)
-  
+
   # Validate that necessary extra arguments are provided.
   if (score_type %in% c("crps", "log_score", "dss") && !("pred_sd" %in% names(extra_args))) {
     stop("Standard deviation ('pred_sd') must be provided for this score computation.")
@@ -260,7 +260,7 @@ wrap_scoring <- function(score_type, y_true, predictions, ...) {
   if (score_type == "interval" && !all(c("lower", "upper") %in% names(extra_args))) {
     stop("Both 'lower' and 'upper' bounds must be provided for interval score computation.")
   }
-  
+
   if (score_type == "crps") {
     compute_crps(y_true, pred_mean = predictions, pred_sd = extra_args[["pred_sd"]])
   } else if (score_type == "log_score") {
