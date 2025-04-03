@@ -1,11 +1,9 @@
 # Set working directory to your project folder
-setwd("C:/Users/ASUS/Desktop/Scoriverse")
+setwd("C:/Users/ASUS/Desktop")
 
 # Create Package and Initialize Git Infrastructure
 library(usethis)
-usethis::create_package("Scoriverse")
-usethis::use_git()
-usethis::use_readme_rmd()
+usethis::create_package("DraftScoriverse")
 
 # -------------------------------------------------
 # Set up Documentation and DESCRIPTION Files
@@ -34,29 +32,16 @@ usethis::use_r("scoriverse-package")
 usethis::use_package("marginaleffects")
 usethis::use_package("scoringRules")
 usethis::use_package("ggplot2")
-usethis::use_package("tidymodels", type = "Imports")  # tidymodels as an import
+usethis::use_package("stats")
+usethis::use_package("utils")
+usethis::use_package("parsnip", type = "Imports")
+usethis::use_package("recipes", type = "Imports")
+usethis::use_package("rsample", type = "Imports")
 
 # Additional imports from specific packages
 usethis::use_import_from("stats", "predict")
 usethis::use_import_from("ggplot2", c("aes", "ggplot", "geom_point", "geom_abline",
                                       "geom_errorbar", "geom_hline", "labs"))
-
-# Additional tidymodels packages
-usethis::use_package("parsnip", type = "Imports")
-usethis::use_package("recipes", type = "Imports")
-usethis::use_package("rsample", type = "Imports")
-
-# -------------------------------------------------
-# (Optional) Load Import Library and Specify Imports
-# -------------------------------------------------
-# Note: Ensure the 'import' package is installed if you intend to use it.
-library(import)
-import::from(ggplot2, ggplot, aes, geom_point, geom_abline, geom_errorbar, geom_hline, labs)
-import::from(parsnip, linear_reg, fit)
-import::from(recipes, recipe, step_normalize, prep)
-import::from(rsample, initial_split, training, testing)
-import::from(workflows, workflow, add_model, add_recipe)
-import::from(tune, tune_grid, last_fit)
 
 # -------------------------------------------------
 # Set Up Testing Infrastructure
@@ -88,10 +73,3 @@ install.packages("tidymodels", dependencies = TRUE)
 # Set License and Final Checks
 # -------------------------------------------------
 usethis::use_mit_license("Juan Jauanda")
-run_scoriverse()  # Run the main function of your package
-
-# -------------------------------------------------
-# Install and Check Additional Package Versions
-# -------------------------------------------------
-install.packages("xfun")
-packageVersion("xfun")
