@@ -1,5 +1,5 @@
-Package: Scoriverse
-Title: What the Package Does (One Line, Title Case)
+Package: DraftScoriverse
+Title: Unified Framework For Extracting Predictions And Evaluating Models Using Proper Scoring Rules 
 Version: 0.0.0.9000
 Authors@R: 
     person("Juan", "Jauanda", , "juanjayaj@gmail.com", role = c("aut", "cre"))
@@ -17,7 +17,8 @@ Imports:
     recipes,
     rsample,
     scoringRules,
-    stats
+    stats,
+    utils
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
