@@ -23,4 +23,4 @@ importFrom(ggplot2,geom_point)
 importFrom(ggplot2,ggplot)
 importFrom(ggplot2,labs)
 importFrom(stats,predict)
-
+importFrom(stats,rpois)
