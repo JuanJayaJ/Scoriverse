@@ -33,10 +33,6 @@ usethis::use_package("marginaleffects")
 usethis::use_package("scoringRules")
 usethis::use_package("ggplot2")
 usethis::use_package("stats")
-usethis::use_package("utils")
-usethis::use_package("parsnip", type = "Imports")
-usethis::use_package("recipes", type = "Imports")
-usethis::use_package("rsample", type = "Imports")
 
 # Additional imports from specific packages
 usethis::use_import_from("stats", "predict")
@@ -73,3 +69,5 @@ install.packages("tidymodels", dependencies = TRUE)
 # Set License and Final Checks
 # -------------------------------------------------
 usethis::use_mit_license("Juan Jauanda")
+
+tools::showNonASCIIfile("R/scoriverse_main.R")
