@@ -38,61 +38,61 @@ run_scoriverse <- function(model, new_data = NULL, y_true,
                            visualize = FALSE, ...) {
   message("Generating predictions...")
   predictions <- extract_predictions(model, new_data, ...)
-  
+
   if (is.null(predictions)) {
     stop("Prediction extraction failed. Check model compatibility.")
   }
-  
+
   message("Calculating evaluation metrics...")
   scores <- list()
   params <- list(...)
-  
+
   if ("crps" %in% score_metrics) {
     if (!("pred_sd" %in% names(params))) {
-      warning("CRPS calculation skipped—missing standard deviation.")
+      warning("CRPS calculation skipped - missing standard deviation.")
     } else {
       scores$crps <- compute_crps(y_true, pred_mean = predictions, pred_sd = params[["pred_sd"]])
     }
   }
-  
+
   if ("log_score" %in% score_metrics) {
     if (!("pred_sd" %in% names(params))) {
-      warning("Skipping log score—standard deviation not provided.")
+      warning("Skipping log score - standard deviation not provided.")
     } else {
       scores$log_score <- compute_log_score(y_true, predictions, params[["pred_sd"]])
     }
   }
-  
+
   if ("brier" %in% score_metrics) {
     if (!("pred_prob" %in% names(params))) {
-      warning("Brier score skipped—predicted probabilities missing.")
+      warning("Brier score skipped - predicted probabilities missing.")
     } else {
       scores$brier <- compute_brier_score(y_true, params[["pred_prob"]])
     }
   }
-  
+
   if ("interval" %in% score_metrics) {
     if (!all(c("lower", "upper") %in% names(params))) {
-      warning("Interval score requires both lower and upper bounds—skipping.")
+      warning("Interval score requires both lower and upper bounds - skipping.")
     } else {
       scores$interval <- compute_interval_score(y_true, params[["lower"]], params[["upper"]])
     }
   }
-  
+
   if ("dss" %in% score_metrics) {
     if (!("pred_sd" %in% names(params))) {
-      warning("Skipping DSS calculation—missing standard deviation.")
+      warning("Skipping DSS calculation - missing standard deviation.")
     } else {
       scores$dss <- compute_dss(y_true, predictions, params[["pred_sd"]])
     }
   }
-  
+
   plot_obj <- NULL
   if (visualize) {
     message("Creating visualization...")
     plot_obj <- visualize_predictions(new_data, y_true, predictions)
   }
-  
+
   list(
     predictions = predictions,
     scores = scores,
