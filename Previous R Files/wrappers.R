@@ -22,6 +22,7 @@
 #' @name wrappers
 #' @import marginaleffects
 #' @import ggplot2
+#' @importFrom stats rpois
 #' @import scoringRules
 NULL
 
