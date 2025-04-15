@@ -17,7 +17,6 @@ compute_crps <- function(y, pred_mean = NULL, pred_sd = NULL, pred_matrix = NULL
   if (verbose) {
     message("Computing CRPS: y length = ", length(y))
   }
-  
   if (!is.null(pred_matrix)) {
     crps_vals <- scoringRules::crps_sample(y = y, dat = pred_matrix)
   } else if (!is.null(pred_mean) && !is.null(pred_sd)) {
@@ -25,11 +24,9 @@ compute_crps <- function(y, pred_mean = NULL, pred_sd = NULL, pred_matrix = NULL
   } else {
     stop("Either provide pred_matrix or both pred_mean and pred_sd.")
   }
-  
   if (verbose) {
     message("CRPS computed, output length = ", length(crps_vals))
   }
-  
   return(crps_vals)
 }
 
@@ -96,4 +93,23 @@ compute_interval_score <- function(y, lower, upper, alpha = 0.05) {
 #' @export
 compute_dss <- function(y, pred_mean, pred_sd) {
   ((y - pred_mean)^2 / (pred_sd^2)) + 2 * log(pred_sd)
+}
+
+#' Compute Scores from Samples
+#'
+#' Compute the requested score (e.g., CRPS, Log Score) for posterior samples.
+#'
+#' @param y A numeric vector of observed values.
+#' @param pred_samples A matrix of posterior samples from the predictive distribution.
+#' @param score_function A function to compute the score (e.g., CRPS, Log Score).
+#' @param ... Additional arguments passed to the scoring function.
+#'
+#' @return A numeric vector of score values.
+#' @export
+compute_score_from_samples <- function(y, pred_samples, score_function, ...) {
+  if (is.null(pred_samples)) {
+    stop("Predicted samples are required for score computation.")
+  }
+  score_values <- score_function(y = y, pred_matrix = pred_samples, ...)
+  return(score_values)
 }
