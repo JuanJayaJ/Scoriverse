@@ -27,17 +27,7 @@
 NULL
 
 # Helper: Standardize Predictions Output
-#' Standardize Predictions
-#'
-#' Converts the raw prediction output into a numeric vector. Optionally checks that
-#' the output length matches an expected value.
-#'
-#' @param preds The raw predictions output.
-#' @param n_expected Optional. An expected length.
-#'
-#' @return A numeric vector of predictions.
 standardize_predictions <- function(preds, n_expected = NULL) {
-  # Extract predictions from data frames or tibbles
   if (is.data.frame(preds) || inherits(preds, "tbl_df")) {
     if ("estimate" %in% names(preds)) {
       pred_vec <- as.numeric(preds$estimate)
@@ -48,6 +38,7 @@ standardize_predictions <- function(preds, n_expected = NULL) {
     pred_vec <- as.numeric(preds)
   }
 
+  # Check if prediction length matches expected length
   if (!is.null(n_expected) && length(pred_vec) != n_expected) {
     message(sprintf("Note: standardized prediction length (%d) does not match expected length (%d).",
                     length(pred_vec), n_expected))
@@ -56,37 +47,12 @@ standardize_predictions <- function(preds, n_expected = NULL) {
   return(pred_vec)
 }
 
-#' Validate a Model Object
-#'
-#' Performs basic validation checks on the model object.
-#'
-#' @param model A fitted model object.
-#'
-#' @return The original model if valid; otherwise, stops with an error.
+# Validate a Model Object
 validate_model_object <- function(model) {
   if (is.null(model)) {
     stop("Provided model is NULL.")
   }
   model
-}
-
-#' Convert Predictions to a Matrix
-#'
-#' Converts point predictions into a matrix format if necessary.
-#'
-#' @param predictions A numeric vector or data frame of predictions.
-#'
-#' @return A matrix of predictions.
-convert_predictions_to_matrix <- function(predictions) {
-  if (is.vector(predictions)) {
-    matrix(predictions, ncol = 1)
-  } else if (is.data.frame(predictions)) {
-    as.matrix(predictions)
-  } else if (is.matrix(predictions)) {
-    predictions
-  } else {
-    stop("Unrecognized format for predictions; cannot convert to matrix.")
-  }
 }
 
 #' Extract Additional Model Parameters for Scoring
@@ -97,27 +63,22 @@ convert_predictions_to_matrix <- function(predictions) {
 #' @param model A fitted model object.
 #'
 #' @return A list of additional parameters.
+#' @export
 extract_additional_params <- function(model) {
   params <- list()
-
-  # For lm and glm models
   if (inherits(model, "lm") || inherits(model, "glm")) {
     fam <- tryCatch(stats::family(model)$family, error = function(e) NULL)
     if (!is.null(fam)) {
       if (fam == "gaussian") {
-        # For Gaussian models, extract sigma (residual standard error)
         params$sigma <- summary(model)$sigma
       } else if (grepl("Negative Binomial", fam, ignore.case = TRUE)) {
-        # For Negative Binomial models, extract the overdispersion parameter.
         if (!is.null(model$theta)) {
           params$phi <- model$theta
         }
       }
     }
   }
-
   # Additional extraction logic for other model types can be added here
-
   return(params)
 }
 
@@ -128,70 +89,93 @@ extract_additional_params <- function(model) {
 #'
 #' @param model A fitted model object.
 #' @param new_data Optional data frame with new observations.
-#' @param ... Additional arguments to pass to the underlying prediction functions.
+#' @param ... Additional arguments for the underlying prediction functions.
 #'
 #' @return A numeric vector of predictions.
 #' @export
 wrap_predict <- function(model, new_data = NULL, ...) {
   model <- validate_model_object(model)
-
-  # Filter out scoring-specific arguments.
   dots <- list(...)
   scoring_args <- c("pred_sd", "pred_prob", "lower", "upper")
   filtered_args <- dots[!names(dots) %in% scoring_args]
-
   predictions <- NULL
   model_classes <- class(model)
 
-  # For model classes handled by marginaleffects::predictions()
+  # Special handling for lm models (linear models)
+  if ("lm" %in% model_classes) {
+    predictions <- tryCatch({
+      # Using predict() for lm models
+      preds_raw <- predict(model, newdata = new_data, ...)
+      # Ensure the prediction is in a numeric vector format
+      pred_vec <- as.numeric(preds_raw)
+
+      # Extract additional parameters (sigma for lm)
+      additional_params <- list()
+      additional_params$sigma <- summary(model)$sigma
+
+      # Ensure that additional_params is a list and contains sigma for lm
+      if (!is.list(additional_params)) {
+        stop("additional_params should be a list for lm model.")
+      }
+
+      # Return predictions and additional parameters
+      attr(pred_vec, "additional_params") <- additional_params
+      return(pred_vec)
+
+    }, error = function(e) {
+      warning("Prediction extraction failed for lm model: ", e$message)
+      return(NULL)
+    })
+  }
+
+  # Handling for other model types (brmsfit, gam, etc.)
   if (any(model_classes %in% c("lm", "glm", "gam", "merMod", "brmsfit"))) {
     predictions <- tryCatch({
       args <- list(model)
       if (!is.null(new_data)) {
         args$newdata <- new_data
       }
-
-      # -- Special Handling for brmsfit --
       if ("brmsfit" %in% model_classes) {
-        if (is.null(filtered_args$type)) {
-          message("No 'type' argument provided for brmsfit. Using type = 'posterior_predict'.")
-          filtered_args$type <- "posterior_predict"
+        if (!is.null(filtered_args$type) && filtered_args$type == "posterior_predict") {
+          n_draws <- filtered_args$draws %||% 1000
+          draws <- brms::posterior_predict(model, newdata = new_data, draws = n_draws)
+          attr(draws, "additional_params") <- extract_additional_params(model)
+          return(draws)
+        } else {
+          preds_raw <- do.call(marginaleffects::predictions, c(args, filtered_args))
+          pred_vec <- standardize_predictions(preds_raw)
+          additional_params <- extract_additional_params(model)
+          attr(pred_vec, "additional_params") <- additional_params
+          return(pred_vec)
         }
       }
 
-      # Obtain initial predictions using marginaleffects::predictions()
-      preds_raw <- do.call(marginaleffects::predictions, c(args, filtered_args))
-      pred_vec <- standardize_predictions(preds_raw)
-
-      # -- Special Handling for gam Models with Poisson Family --
       if ("gam" %in% model_classes) {
         fam <- tryCatch(stats::family(model)$family, error = function(e) NULL)
-        if (!is.null(fam) && grepl("poisson", fam, ignore.case = TRUE)) {
-          message("Detected gam model with Poisson family. Generating Poisson draws for observation-level uncertainty.")
-          # Convert expectation-scale predictions to observation-level draws
-          pred_vec <- sapply(pred_vec, function(mu) rpois(n = 1, lambda = mu))
+        if (!is.null(fam)) {
+          if (grepl("poisson", fam, ignore.case = TRUE)) {
+            message("Detected gam model with Poisson family. Generating Poisson draws.")
+            pred_vec <- sapply(pred_vec, function(mu) rpois(n = 1, lambda = mu))
+          } else if (grepl("negbinom", fam, ignore.case = TRUE)) {
+            message("Detected gam model with Negative Binomial family. Generating NB draws.")
+            params <- extract_additional_params(model)
+            if (is.null(params$phi)) {
+              stop("Negative Binomial: overdispersion parameter 'phi' not available.")
+            }
+            size <- params$phi
+            pred_vec <- sapply(pred_vec, function(mu) rnbinom(n = 1, size = size, mu = mu))
+          }
         }
       }
-
       pred_vec
     }, error = function(e) {
-      warning("marginaleffects::predictions() failed: ", e$message)
-      NULL
+      warning("Prediction extraction failed: ", e$message)
+      return(NULL)  # Ensures that NULL is returned on error
     })
-
-    if (!is.null(predictions)) {
-      if (!is.null(new_data) && length(predictions) != nrow(new_data)) {
-        predictions <- predictions[seq_len(nrow(new_data))]
-      }
-      # Attach additional parameters (e.g., sigma, phi) for scoring
-      additional_params <- extract_additional_params(model)
-      attr(predictions, "additional_params") <- additional_params
-      return(predictions)
-    }
   }
 
-  # For tree-based models (randomForest, gbm, xgb.Booster, glmnet)
-  if (any(model_classes %in% c("randomForest", "gbm", "xgb.Booster", "glmnet"))) {
+  # Generic prediction for other models (e.g., randomForest, glmnet)
+  if (is.null(predictions)) {
     predictions <- tryCatch({
       if (!is.null(new_data)) {
         preds_generic <- predict(model, newdata = new_data, ...)
@@ -203,33 +187,11 @@ wrap_predict <- function(model, new_data = NULL, ...) {
         predict(model, ...)
       }
     }, error = function(e) {
-      warning("Model-specific predict() failed: ", e$message)
-      NULL
+      stop("Generic predict() failed: ", e$message)
     })
-    if (!is.null(predictions)) {
-      n_expected <- if (!is.null(new_data)) nrow(new_data) else length(predictions)
-      predictions <- standardize_predictions(predictions, n_expected = n_expected)
-      additional_params <- extract_additional_params(model)
-      attr(predictions, "additional_params") <- additional_params
-      return(predictions)
-    }
   }
 
-  # Fallback to the generic predict() method
-  predictions <- tryCatch({
-    if (!is.null(new_data)) {
-      preds_generic <- predict(model, newdata = new_data, ...)
-      if (length(preds_generic) != nrow(new_data)) {
-        preds_generic <- preds_generic[seq_len(nrow(new_data))]
-      }
-      preds_generic
-    } else {
-      predict(model, ...)
-    }
-  }, error = function(e) {
-    stop("Generic predict() failed: ", e$message)
-  })
-
+  # Standardize predictions and return
   n_expected <- if (!is.null(new_data)) nrow(new_data) else length(predictions)
   predictions <- standardize_predictions(predictions, n_expected = n_expected)
   additional_params <- extract_additional_params(model)
@@ -249,9 +211,15 @@ wrap_predict <- function(model, new_data = NULL, ...) {
 #' @return A numeric vector of computed score values.
 #' @export
 wrap_scoring <- function(score_type, y_true, predictions, ...) {
+  if (is.matrix(predictions)) {
+    return(compute_score_from_samples(y_true, predictions, score_function = switch(
+      score_type,
+      "crps" = compute_crps,
+      # Add more sample-based scoring functions here later
+      stop("Sample-based scoring not yet supported for this score type.")
+    )))
+  }
   extra_args <- list(...)
-
-  # Validate that necessary extra arguments are provided.
   if (score_type %in% c("crps", "log_score", "dss") && !("pred_sd" %in% names(extra_args))) {
     stop("Standard deviation ('pred_sd') must be provided for this score computation.")
   }
@@ -263,15 +231,15 @@ wrap_scoring <- function(score_type, y_true, predictions, ...) {
   }
 
   if (score_type == "crps") {
-    compute_crps(y_true, pred_mean = predictions, pred_sd = extra_args[["pred_sd"]])
+    return(compute_crps(y_true, pred_mean = predictions, pred_sd = extra_args[["pred_sd"]]))
   } else if (score_type == "log_score") {
-    compute_log_score(y_true, predictions, extra_args[["pred_sd"]])
+    return(compute_log_score(y_true, predictions, extra_args[["pred_sd"]]))
   } else if (score_type == "brier") {
-    compute_brier_score(y_true, extra_args[["pred_prob"]])
+    return(compute_brier_score(y_true, extra_args[["pred_prob"]]))
   } else if (score_type == "interval") {
-    compute_interval_score(y_true, extra_args[["lower"]], extra_args[["upper"]])
+    return(compute_interval_score(y_true, extra_args[["lower"]], extra_args[["upper"]]))
   } else if (score_type == "dss") {
-    compute_dss(y_true, predictions, extra_args[["pred_sd"]])
+    return(compute_dss(y_true, predictions, extra_args[["pred_sd"]]))
   } else {
     stop("Unsupported score_type. Choose from: 'crps', 'log_score', 'brier', 'interval', 'dss'.")
   }
@@ -291,3 +259,4 @@ prepare_model_for_prediction <- function(model, new_data, ...) {
   validated_model <- validate_model_object(model)
   wrap_predict(validated_model, new_data = new_data, ...)
 }
+
