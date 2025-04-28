@@ -3,7 +3,14 @@ Title: Probabilistic Prediction Scoring and Evaluation Framework
 Version: 0.0.1
 Authors@R: 
     person("Juan", "Jauanda", , "juanjayaj@gmail.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: DraftScoriverse provides a unified framework for generating probabilistic predictions 
+    and evaluating model performance using proper scoring rules. The package supports 
+    outcome-scale sampling for a variety of statistical models, including generalized linear models (GLM), 
+    generalized additive models (GAM), Bayesian models fitted with 'brms', and tidymodels workflows. 
+    Key features include posterior predictive draws, scoring metrics such as CRPS, Log Score, 
+    Brier Score, Interval Score, and DSS, as well as visualization tools for diagnostic evaluation. 
+    The package is designed to facilitate robust, probabilistic model assessment with consistent 
+    interfaces across supported model types.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -14,7 +21,7 @@ Imports:
     ggplot2,
     stats,
     scoringRules,
-    gratia,
+    gratia
 Suggests: 
     MASS,
     tidybayes,
