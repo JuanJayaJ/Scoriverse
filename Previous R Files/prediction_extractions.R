@@ -9,16 +9,28 @@
 #' @return A matrix of posterior predictive samples. Rows = draws, columns = observations.
 #' @export
 get_posterior_draws <- function(model, new_data, draws = 1000) {
-  if (inherits(model, "brmsfit")) {
-    return(brms::posterior_predict(model, newdata = new_data, draws = draws))
-  } else {
-    stop("Posterior draw extraction not supported for this model type yet.")
+  if (!inherits(model, "brmsfit")) {
+    stop("Posterior draw extraction is only supported for 'brmsfit' models.")
   }
+  brms::posterior_predict(model, newdata = new_data, draws = draws)
 }
 
+# ----------------------------
+# Internal Helper: Validate Inputs
+# ----------------------------
+.validate_extract_inputs <- function(model, new_data, return_samples, n_samples) {
+  if (is.null(model)) stop("`model` must be provided.")
+  if (!is.logical(return_samples)) stop("`return_samples` must be TRUE or FALSE.")
+  if (!is.numeric(n_samples) || n_samples <= 0) stop("`n_samples` must be a positive integer.")
+}
+
+# ----------------------------
+# Extract Predictions from Diverse Model Objects
+# ----------------------------
 #' Extract Predictions from Diverse Model Objects
 #'
 #' Extracts prediction estimates from a fitted model object using appropriate methods.
+#' Supports outcome-scale sampling using random number generators when `return_samples = TRUE`.
 #'
 #' @param model A fitted model object.
 #' @param new_data Optional data frame with new observations.
@@ -29,77 +41,127 @@ get_posterior_draws <- function(model, new_data, draws = 1000) {
 #' @return A numeric vector of predictions or matrix of posterior samples (depending on `return_samples`).
 #' @export
 extract_predictions <- function(model, new_data = NULL, return_samples = FALSE, n_samples = 1000, ...) {
+  .validate_extract_inputs(model, new_data, return_samples, n_samples)
   dots <- list(...)
   scoring_args <- c("pred_sd", "pred_prob", "lower", "upper")
   filtered_args <- dots[!names(dots) %in% scoring_args]
+  model_classes <- class(model)
 
-  if (inherits(model, "brmsfit")) {
-    if (return_samples) {
-      return(get_posterior_draws(model, new_data = new_data, draws = n_samples))
+  # ---------------------------
+  # brmsfit Handling
+  # ---------------------------
+  if ("brmsfit" %in% model_classes) {
+    preds <- if (return_samples) {
+      get_posterior_draws(model, new_data = new_data, draws = n_samples)
     } else {
-      return(colMeans(get_posterior_draws(model, new_data = new_data, draws = n_samples)))
+      colMeans(get_posterior_draws(model, new_data = new_data, draws = n_samples))
     }
+    return(preds)
   }
 
-  if (inherits(model, "gam")) {
+  # ---------------------------
+  # GAM Handling (Manual Outcome-Scale Sampling)
+  # ---------------------------
+  if ("gam" %in% model_classes) {
+    fam <- family(model)$family
+    pred_mean <- predict(model, newdata = new_data, type = "response")
+
     if (return_samples) {
-      if (!requireNamespace("gratia", quietly = TRUE) ||
-          !requireNamespace("tidybayes", quietly = TRUE)) {
-        stop("Packages 'gratia' and 'tidybayes' must be installed to return samples for GAMs.")
-      }
-      draws <- tidybayes::fitted_draws(model, newdata = new_data, n = n_samples, value = "lambda")
-      fam <- family(model)$family
-      lambda_mat <- tidyr::pivot_wider(draws, names_from = ".row", values_from = "lambda")
-      lambda_mat <- as.matrix(lambda_mat[,-1])
-      if (grepl("poisson", fam, ignore.case = TRUE)) {
-        outcome_draws <- apply(lambda_mat, 2, function(lam) rpois(n_samples, lam))
+      sampled_values <- if (grepl("poisson", fam, ignore.case = TRUE)) {
+        rpois(n = n_samples * length(pred_mean), lambda = rep(pred_mean, each = n_samples))
       } else if (grepl("gaussian", fam, ignore.case = TRUE)) {
         sigma <- sqrt(sum(residuals(model)^2) / df.residual(model))
-        outcome_draws <- apply(lambda_mat, 2, function(mu) rnorm(n_samples, mu, sigma))
-      } else if (grepl("negbinom", fam, ignore.case = TRUE)) {
+        rnorm(n = n_samples * length(pred_mean), mean = rep(pred_mean, each = n_samples), sd = sigma)
+      } else if (grepl("Negative Binomial", fam, ignore.case = TRUE)) {
         params <- extract_additional_params(model)
-        if (is.null(params$phi)) {
-          stop("Negative Binomial: overdispersion parameter 'phi' not available.")
-        }
-        size <- params$phi
-        outcome_draws <- apply(lambda_mat, 2, function(mu) rnbinom(n_samples, size = size, mu = mu))
+        if (is.null(params$phi)) stop("Negative Binomial: overdispersion parameter 'phi' not available.")
+        rnbinom(n = n_samples * length(pred_mean), size = params$phi, mu = rep(pred_mean, each = n_samples))
       } else {
-        stop("Sampling for GAM family not yet implemented: ", fam)
+        stop("Sampling not implemented for GAM family: ", fam)
       }
+
+      outcome_draws <- matrix(sampled_values, nrow = n_samples, byrow = TRUE)
       return(outcome_draws)
     } else {
-      mu <- predict(model, newdata = new_data, type = "response")
-      return(mu)
+      return(pred_mean)
     }
   }
 
-  if (any(class(model) %in% c("randomForest", "gbm", "xgb.Booster", "glmnet"))) {
-    if (!is.null(new_data)) {
-      preds_generic <- predict(model, newdata = new_data, ...)
-      if (length(preds_generic) != nrow(new_data)) {
-        preds_generic <- preds_generic[seq_len(nrow(new_data))]
+  # ---------------------------
+  # GLM Handling (Fixed Gaussian logic, Negative Binomial detection)
+  # ---------------------------
+  if (inherits(model, "glm")) {
+    fam <- family(model)$family
+    pred_mean <- predict(model, new_data = new_data, type = "response")
+
+    if (return_samples) {
+      sampled_values <- if (grepl("poisson", fam, ignore.case = TRUE)) {
+        rpois(n = n_samples * length(pred_mean), lambda = rep(pred_mean, each = n_samples))
+      } else if (grepl("gaussian", fam, ignore.case = TRUE)) {
+        # Robust sigma extraction logic
+        dispersion <- summary(model)$dispersion
+        sigma <- if (!is.null(dispersion)) {
+          sqrt(dispersion)
+        } else {
+          sqrt(mean(residuals(model)^2))  # fallback if dispersion is missing
+        }
+        rnorm(n = n_samples * length(pred_mean), mean = rep(pred_mean, each = n_samples), sd = sigma)
+      } else if (grepl("Negative Binomial", fam, ignore.case = TRUE)) {
+        params <- extract_additional_params(model)
+        if (is.null(params$phi)) stop("Negative Binomial: overdispersion parameter 'phi' not available.")
+        rnbinom(n = n_samples * length(pred_mean), size = params$phi, mu = rep(pred_mean, each = n_samples))
+      } else {
+        stop("Sampling not implemented for GLM family: ", fam)
       }
-      return(standardize_predictions(preds_generic, n_expected = nrow(new_data)))
+
+      outcome_draws <- matrix(sampled_values, nrow = n_samples, ncol = length(pred_mean), byrow = TRUE)
+      return(outcome_draws)
     } else {
-      return(standardize_predictions(predict(model, ...)))
+      return(pred_mean)
     }
   }
 
-  predictions <- tryCatch({
-    if (!is.null(new_data)) {
-      preds_generic <- predict(model, newdata = new_data, ...)
-      if (length(preds_generic) != nrow(new_data)) {
-        preds_generic <- preds_generic[seq_len(nrow(new_data))]
+  # ---------------------------
+  # Tidymodels Workflow / ML Models (no sampling)
+  # ---------------------------
+  if (any(model_classes %in% c("workflow", "randomForest", "gbm", "xgb.Booster", "glmnet"))) {
+    preds_generic <- tryCatch({
+      if ("workflow" %in% model_classes) {
+        if (!requireNamespace("parsnip", quietly = TRUE)) stop("The 'parsnip' package is required for tidymodels workflows.")
+        pred_result <- predict(model, new_data = new_data)
+        if (".pred" %in% names(pred_result)) {
+          as.numeric(pred_result$.pred)
+        } else {
+          as.numeric(pred_result[[1]])
+        }
+      } else {
+        if (!is.null(new_data)) {
+          predict(model, newdata = new_data, ...)
+        } else {
+          predict(model, ...)
+        }
       }
-      preds_generic
+    }, error = function(e) {
+      stop("Generic predict() failed for machine learning models: ", e$message)
+    })
+    n_expected <- if (!is.null(new_data)) nrow(new_data) else length(preds_generic)
+    return(standardize_predictions(preds_generic, n_expected = n_expected))
+  }
+
+  # ---------------------------
+  # Fallback Prediction
+  # ---------------------------
+  predictions <- tryCatch({
+    preds_generic <- if (!is.null(new_data)) {
+      predict(model, newdata = new_data, ...)
     } else {
       predict(model, ...)
     }
+    n_expected <- if (!is.null(new_data)) nrow(new_data) else length(preds_generic)
+    standardize_predictions(preds_generic, n_expected = n_expected)
   }, error = function(e) {
     stop("Generic predict() failed: ", e$message)
   })
 
-  n_expected <- if (!is.null(new_data)) nrow(new_data) else length(predictions)
-  standardize_predictions(predictions, n_expected = n_expected)
+  return(predictions)
 }
-
