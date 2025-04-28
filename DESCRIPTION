@@ -1,22 +1,24 @@
 Package: DraftScoriverse
-Title: Unified Framework For Extracting Predictions And Evaluating Models Using Proper Scoring Rules 
-Version: 0.0.0.9000
+Title: Probabilistic Prediction Scoring and Evaluation Framework
+Version: 0.0.1
 Authors@R: 
     person("Juan", "Jauanda", , "juanjayaj@gmail.com", role = c("aut", "cre"))
-Description: Provides a consistent and automated framework for generating probabilistic predictions and evaluating models using proper scoring rules. Supports a wide range of model types, from classical statistical models to machine learning algorithms, through a unified API. Designed to assist data scientists and business decision-makers by incorporating predictive uncertainty and offering robust, probabilistically-sound evaluation metrics.
+Description: What the package does (one paragraph).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Imports: 
+Imports:
     brms,
-    ggplot2,
-    gratia,
     marginaleffects,
-    MASS,
-    scoringRules,
+    ggplot2,
     stats,
-    tidybayes
+    scoringRules,
+    gratia,
 Suggests: 
+    MASS,
+    tidybayes,
+    mgcv,
+    parsnip,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
