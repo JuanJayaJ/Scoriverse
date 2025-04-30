@@ -35,7 +35,10 @@ run_scoriverse <- function(model, new_data = NULL, y_true,
   # Loop over each requested score metric and apply scoring via wrap_scoring
   for (metric in score_metrics) {
     score_result <- tryCatch({
-      wrap_scoring(score_type = metric, y_true = y_true, predictions = preds, !!!params)
+      do.call(wrap_scoring, c(
+        list(score_type = metric, y_true = y_true, predictions = preds),
+        params
+      ))
     }, error = function(e) {
       warning(sprintf("Skipping %s calculation: %s", metric, e$message))
       NULL
@@ -58,4 +61,3 @@ run_scoriverse <- function(model, new_data = NULL, y_true,
 
   return(list(predictions = preds, scores = scores, plot = plot_obj, meta = meta_info))
 }
-
