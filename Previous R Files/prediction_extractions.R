@@ -25,8 +25,6 @@ get_posterior_draws <- function(model, new_data, draws = 1000) {
 }
 
 # ----------------------------
-# Extract Predictions from Diverse Model Objects
-# ----------------------------
 #' Extract Predictions from Diverse Model Objects
 #'
 #' Extracts prediction estimates from a fitted model object using appropriate methods.
@@ -36,11 +34,15 @@ get_posterior_draws <- function(model, new_data, draws = 1000) {
 #' @param new_data Optional data frame with new observations.
 #' @param return_samples Logical. If TRUE, return posterior samples or draws; if FALSE, return point estimates (default).
 #' @param n_samples Number of posterior samples to draw (if return_samples = TRUE).
+#' @param use_gratia Logical. If TRUE, use \code{gratia::fitted_samples()} for GAM sampling (default = FALSE).
 #' @param ... Additional arguments for underlying prediction functions.
 #'
 #' @return A numeric vector of predictions or matrix of posterior samples (depending on `return_samples`).
 #' @export
-extract_predictions <- function(model, new_data = NULL, return_samples = FALSE, n_samples = 1000, ...) {
+#' @importFrom mgcv gam
+#' @importFrom tidyr pivot_wider
+extract_predictions <- function(model, new_data = NULL, return_samples = FALSE,
+                                n_samples = 1000, use_gratia = FALSE, ...) {
   .validate_extract_inputs(model, new_data, return_samples, n_samples)
   dots <- list(...)
   scoring_args <- c("pred_sd", "pred_prob", "lower", "upper")
@@ -60,13 +62,30 @@ extract_predictions <- function(model, new_data = NULL, return_samples = FALSE, 
   }
 
   # ---------------------------
-  # GAM Handling (Manual Outcome-Scale Sampling)
+  # GAM Handling (Manual or Gratia-based Outcome-Scale Sampling)
   # ---------------------------
   if ("gam" %in% model_classes) {
     fam <- family(model)$family
     pred_mean <- predict(model, newdata = new_data, type = "response")
 
     if (return_samples) {
+      if (use_gratia && requireNamespace("gratia", quietly = TRUE)) {
+        # Use gratia::simulate_draws() for GAM outcome-scale draws
+        sim_df <- gratia::fitted_samples(model, newdata = new_data, n = n_samples, scale = "response")
+
+        # Select only relevant columns (.draw = sample ID, .row = obs index, .fitted = value)
+        draw_matrix <- tidyr::pivot_wider(
+          data = sim_df[, c(".draw", ".row", ".fitted")],
+          names_from = ".row",
+          values_from = ".fitted"
+        )
+
+        # Drop .draw column and convert to matrix
+        outcome_draws <- as.matrix(draw_matrix[, -1])
+        return(outcome_draws)
+      }
+
+      # Manual fallback: simulate outcome-scale draws based on family
       sampled_values <- if (grepl("poisson", fam, ignore.case = TRUE)) {
         rpois(n = n_samples * length(pred_mean), lambda = rep(pred_mean, each = n_samples))
       } else if (grepl("gaussian", fam, ignore.case = TRUE)) {
