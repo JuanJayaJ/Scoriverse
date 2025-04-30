@@ -33,4 +33,7 @@
 if (getRversion() >= "2.15.1") {
   utils::globalVariables(c("observed", "predicted", "lower", "upper", "residuals"))
 }
-
+## usethis namespace: start
+#' @importFrom tidyr pivot_wider
+## usethis namespace: end
+NULL
