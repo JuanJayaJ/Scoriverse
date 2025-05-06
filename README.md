@@ -1,96 +1,125 @@
 # DraftScoriverse
 
-**Probabilistic Prediction Scoring and Evaluation Framework**
+**Probabilistic Prediction Scoring and Evaluation Framework**  
+📦 Version: 0.0.1  
+🧪 License: MIT
 
-*Version: 0.0.1*
+---
 
-## Overview
+## 🔍 Overview
 
-`DraftScoriverse` provides a flexible and unified framework for probabilistic prediction generation and model evaluation using proper scoring rules. The package supports outcome-scale sampling and evaluation across a variety of statistical modeling approaches, including:
+**DraftScoriverse** provides a flexible and unified framework for generating probabilistic predictions and evaluating models using **proper scoring rules**. It supports **outcome-scale sampling**, **posterior predictive draws**, and **modular scoring tools** across a range of statistical modeling approaches, including:
 
-- Generalized Linear Models (GLM)
-- Generalized Additive Models (GAM)
-- Bayesian models fitted via `brms`
-- Tidymodels workflows
+- ✅ Generalized Linear Models (GLM)
+- ✅ Generalized Additive Models (GAM)
+- ✅ Bayesian models via `brms`
+- ✅ Tidymodels workflows
 
-This framework facilitates robust uncertainty quantification and scoring through a consistent API, making it easier to compare model performance using well-established probabilistic metrics.
+This framework enhances uncertainty-aware evaluation by offering a consistent API for comparing model performance using well-established probabilistic metrics.
+
+---
 
 ## ✨ Key Features
 
-- **Outcome-scale sampling** for GLM, GAM, and Bayesian models
-- **Posterior predictive draws** using proper random number generation
-- **Support for multiple model classes** (GLM, GAM, brmsfit, tidymodels workflows)
-- **Proper scoring rules**:
+- 🔁 Outcome-scale sampling for GLM, GAM, and Bayesian models  
+- 🎯 Posterior predictive draws using proper random number generation  
+- 🧠 Support for multiple model classes: `glm`, `gam`, `brmsfit`, and `workflow`  
+- 📈 Proper scoring rules:
   - Continuous Ranked Probability Score (CRPS)
   - Logarithmic Score (Log Score)
-  - Brier Score
-  - Interval Score
   - Dawid-Sebastiani Score (DSS)
-- **Diagnostic visualizations** for prediction assessment
-- **Unified wrapper functions** for prediction extraction and scoring
+  - Interval Score
+  - Brier Score
+- 📊 Diagnostic visualizations for prediction and residual analysis  
+- 🧰 Unified wrapper functions for predictions and scoring  
+
+---
 
 ## 🚀 Installation
 
-To install the development version of the package from your local directory:
+To install the development version from your local tarball:
 
 ```r
-install.packages("path_to_your_downloaded/DraftScoriverse_0.0.1.tar.gz", repos = NULL, type = "source")
+install.packages("path/to/DraftScoriverse_0.0.1.tar.gz", repos = NULL, type = "source")
 ```
 
-## 📦 Package Usage
+---
 
-### Prediction and Sampling Example:
+## 📦 Usage Example
 
 ```r
 library(DraftScoriverse)
 library(MASS)
 
+# Fit a Negative Binomial GLM
 data <- data.frame(count = rnbinom(100, size = 2, mu = 5), x = rnorm(100))
 model <- glm.nb(count ~ x, data = data)
 
+# Generate samples
 samples <- extract_predictions(model, new_data = data, return_samples = TRUE, n_samples = 100)
 
-scores <- wrap_scoring(score_type = "crps", y_true = data$count, predictions = samples)
+# Evaluate CRPS
+scores <- wrap_scoring("crps", y_true = data$count, predictions = samples)
 ```
+
+---
 
 ## 📊 Scoring Functions
 
-| Score Type  | Required Inputs                | Description                                 |
-|-------------|---------------------------------|---------------------------------------------|
-| `crps`      | `pred_mean`, `pred_sd`          | Continuous Ranked Probability Score        |
-| `log_score` | `pred_mean`, `pred_sd`          | Logarithmic Score for density functions    |
-| `brier`     | `pred_prob`                     | Brier Score for binary classification      |
-| `interval`  | `lower`, `upper`                | Interval Score for prediction intervals    |
-| `dss`       | `pred_mean`, `pred_sd`          | Dawid-Sebastiani Score                     |
+| Score Type    | Required Inputs             | Description                                   |
+|---------------|-----------------------------|-----------------------------------------------|
+| `crps`        | `pred_mean`, `pred_sd`      | Continuous Ranked Probability Score           |
+| `log_score`   | `pred_mean`, `pred_sd`      | Logarithmic Score (density-based)             |
+| `brier`       | `pred_prob`                 | Brier Score for binary classification         |
+| `interval`    | `lower`, `upper`            | Interval Score for prediction intervals       |
+| `dss`         | `pred_mean`, `pred_sd`      | Dawid-Sebastiani Score                        |
+
+---
 
 ## 📂 Supported Models
 
-| Model Type           | Supported Sampling                        |
-|----------------------|--------------------------------------------|
-| GLM                  | Outcome-scale sampling with appropriate RNGs |
-| GAM (`mgcv`)         | Outcome-scale sampling, posterior uncertainty handling |
-| brmsfit (`brms`)     | Posterior predictive draws via `posterior_predict()` |
-| Tidymodels workflows | Standard prediction extraction (no posterior sampling) |
+| Model Type            | Sampling Support                                          |
+|------------------------|----------------------------------------------------------|
+| **GLM** (`glm`)        | Outcome-scale sampling with `rnorm()`, `rpois()`, etc.   |
+| **GAM** (`gam`)        | Posterior predictive sampling via `gratia::fitted_samples()` |
+| **Bayesian** (`brms`)  | Posterior predictive draws via `posterior_predict()`     |
+| **Tidymodels** (`workflow`) | Point prediction only; no posterior samples           |
+
+---
 
 ## ✅ Testing
 
-Run all tests locally with:
+Run all package tests locally:
 
 ```r
 devtools::test()
 ```
 
-Or check the package with:
+Check the full package build:
 
 ```r
 devtools::check()
 ```
 
-## 📋 License
+---
 
-This package is licensed under the **MIT License**.  
-See the `LICENSE` file for details.
+## 📄 License
+
+This package is released under the **MIT License**.  
+See the `LICENSE` file for full details.
+
+---
 
 ## 🙌 Acknowledgements
-This package was developed by Juan Jauanda as part of data science capstone project on model evaluation using probabilistic scoring rules.
-Special thanks to the maintainers of the brms, mgcv, scoringRules, and marginaleffects packages, which are integrated into this framework.
+
+Developed by **Juan Jauanda** as part of a data science capstone project on **model evaluation with probabilistic scoring rules**.
+
+Special thanks to the authors of:
+- [`brms`](https://cran.r-project.org/package=brms)
+- [`mgcv`](https://cran.r-project.org/package=mgcv)
+- [`scoringRules`](https://cran.r-project.org/package=scoringRules)
+- [`marginaleffects`](https://cran.r-project.org/package=marginaleffects)
+
+for building the foundational tools integrated into this package.
+
+---
