@@ -62,44 +62,25 @@ extract_predictions <- function(model, new_data = NULL, return_samples = FALSE,
   }
 
   # ---------------------------
-  # GAM Handling (Manual or Gratia-based Outcome-Scale Sampling)
+  # GAM Handling (Gratia-based Outcome-Scale Sampling)
   # ---------------------------
   if ("gam" %in% model_classes) {
     fam <- family(model)$family
     pred_mean <- predict(model, newdata = new_data, type = "response")
 
     if (return_samples) {
-      if (use_gratia && requireNamespace("gratia", quietly = TRUE)) {
-        # Use gratia::simulate_draws() for GAM outcome-scale draws
-        sim_df <- gratia::fitted_samples(model, newdata = new_data, n = n_samples, scale = "response")
+      # Always use gratia::fitted_samples() for outcome-scale draws
+      sim_df <- gratia::fitted_samples(model, newdata = new_data, n = n_samples, scale = "response")
 
-        # Select only relevant columns (.draw = sample ID, .row = obs index, .fitted = value)
-        draw_matrix <- tidyr::pivot_wider(
-          data = sim_df[, c(".draw", ".row", ".fitted")],
-          names_from = ".row",
-          values_from = ".fitted"
-        )
+      # Convert to wide format: one row per draw, one column per observation
+      draw_matrix <- tidyr::pivot_wider(
+        data = sim_df[, c(".draw", ".row", ".fitted")],
+        names_from = ".row",
+        values_from = ".fitted"
+      )
 
-        # Drop .draw column and convert to matrix
-        outcome_draws <- as.matrix(draw_matrix[, -1])
-        return(outcome_draws)
-      }
-
-      # Manual fallback: simulate outcome-scale draws based on family
-      sampled_values <- if (grepl("poisson", fam, ignore.case = TRUE)) {
-        rpois(n = n_samples * length(pred_mean), lambda = rep(pred_mean, each = n_samples))
-      } else if (grepl("gaussian", fam, ignore.case = TRUE)) {
-        sigma <- sqrt(sum(residuals(model)^2) / df.residual(model))
-        rnorm(n = n_samples * length(pred_mean), mean = rep(pred_mean, each = n_samples), sd = sigma)
-      } else if (grepl("Negative Binomial", fam, ignore.case = TRUE)) {
-        params <- extract_additional_params(model)
-        if (is.null(params$phi)) stop("Negative Binomial: overdispersion parameter 'phi' not available.")
-        rnbinom(n = n_samples * length(pred_mean), size = params$phi, mu = rep(pred_mean, each = n_samples))
-      } else {
-        stop("Sampling not implemented for GAM family: ", fam)
-      }
-
-      outcome_draws <- matrix(sampled_values, nrow = n_samples, byrow = TRUE)
+      # Drop .draw column and convert to matrix
+      outcome_draws <- as.matrix(draw_matrix[, -1])
       return(outcome_draws)
     } else {
       return(pred_mean)
@@ -107,30 +88,25 @@ extract_predictions <- function(model, new_data = NULL, return_samples = FALSE,
   }
 
   # ---------------------------
-  # GLM Handling (Fixed Gaussian logic, Negative Binomial detection)
+  # GLM Handling
   # ---------------------------
-  if (inherits(model, "glm")) {
+  if (any(model_classes %in% c("glm", "lm"))) {
     fam <- family(model)$family
-    pred_mean <- predict(model, new_data = new_data, type = "response")
+    pred_mean <- predict(model, newdata = new_data, type = "response")
 
     if (return_samples) {
       sampled_values <- if (grepl("poisson", fam, ignore.case = TRUE)) {
         rpois(n = n_samples * length(pred_mean), lambda = rep(pred_mean, each = n_samples))
       } else if (grepl("gaussian", fam, ignore.case = TRUE)) {
-        # Robust sigma extraction logic
         dispersion <- summary(model)$dispersion
-        sigma <- if (!is.null(dispersion)) {
-          sqrt(dispersion)
-        } else {
-          sqrt(mean(residuals(model)^2))  # fallback if dispersion is missing
-        }
+        sigma <- if (!is.null(dispersion)) sqrt(dispersion) else sqrt(mean(residuals(model)^2))
         rnorm(n = n_samples * length(pred_mean), mean = rep(pred_mean, each = n_samples), sd = sigma)
       } else if (grepl("Negative Binomial", fam, ignore.case = TRUE)) {
         params <- extract_additional_params(model)
         if (is.null(params$phi)) stop("Negative Binomial: overdispersion parameter 'phi' not available.")
         rnbinom(n = n_samples * length(pred_mean), size = params$phi, mu = rep(pred_mean, each = n_samples))
       } else {
-        stop("Sampling not implemented for GLM family: ", fam)
+        stop("Sampling not implemented for GLM/LM family: ", fam)
       }
 
       outcome_draws <- matrix(sampled_values, nrow = n_samples, ncol = length(pred_mean), byrow = TRUE)
@@ -139,6 +115,7 @@ extract_predictions <- function(model, new_data = NULL, return_samples = FALSE,
       return(pred_mean)
     }
   }
+
 
   # ---------------------------
   # Tidymodels Workflow / ML Models (no sampling)
