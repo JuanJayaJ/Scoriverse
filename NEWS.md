@@ -3,43 +3,49 @@
 ## DraftScoriverse 0.0.1 (Development Release)
 
 ### 🎉 New Features
-- Initial implementation of `DraftScoriverse`: a probabilistic prediction scoring and evaluation framework.
-- Support for **Generalized Linear Models (GLM)** with outcome-scale sampling.
-- Support for **Generalized Additive Models (GAM)** with outcome-scale sampling.
-- Integrated support for **Bayesian models** via `brms`, with posterior predictive draws.
-- Added support for **tidymodels workflows** for standard prediction extraction.
+- Initial release of **DraftScoriverse**: a probabilistic prediction scoring and evaluation framework.
+- Support for:
+  - ✅ **Generalized Linear Models (GLM)** with outcome-scale sampling
+  - ✅ **Generalized Additive Models (GAM)** with `gratia::fitted_samples()`
+  - ✅ **Bayesian models** via `brms::posterior_predict()`
+  - ✅ **Tidymodels workflows** with standard prediction extraction
 
 ### 📏 Scoring Functions
 - Implemented proper scoring rules:
-  - Continuous Ranked Probability Score (CRPS)
-  - Logarithmic Score (Log Score)
+  - CRPS (Continuous Ranked Probability Score)
+  - Log Score (Logarithmic Score)
   - Brier Score
   - Interval Score
-  - Dawid-Sebastiani Score (DSS)
-- Added `wrap_scoring()` function to provide a unified scoring interface.
+  - Dawid–Sebastiani Score (DSS)
+- Introduced `wrap_scoring()` for unified scoring workflows.
 
-### 📌 Prediction Utilities
-- Developed `wrap_predict()` to standardize prediction extraction across supported model types.
-- Developed `extract_predictions()` to handle posterior sampling and outcome-scale sampling using proper random number generators.
-- Created `extract_additional_params()` to safely retrieve sigma (for Gaussian) or phi (for Negative Binomial) from models.
-- Implemented `prepare_model_for_prediction()` for model validation and pre-prediction checks.
+### 🔁 Prediction Utilities
+- `wrap_predict()` for standardized prediction across models.
+- `extract_predictions()` for outcome-scale and posterior sampling.
+- `extract_additional_params()` for extracting model-specific variance/dispersion parameters.
+- `prepare_model_for_prediction()` for pre-prediction validation.
 
 ### 📊 Visualization
-- Added basic diagnostic visualizations for residuals and prediction assessment.
+- Diagnostic plots for residuals and predictions via:
+  - `visualize_residuals()`
+  - `visualize_predictions()`
 
 ### ✅ Testing and Validation
-- Extensive unit testing with `testthat` for:
-  - Sampling correctness
-  - Prediction extraction
+- 26 unit tests using `{testthat}` v3 covering:
+  - Sampling logic
+  - Prediction correctness
   - Scoring accuracy
-  - Input validation and error handling
+  - Input validation and error catching
+- All tests passing with zero warnings, skips, or failures.
 
-### 📄 Documentation
-- Added initial documentation with `roxygen2` comments.
-- Completed function-level documentation for all public interfaces.
-- Created README.md with usage examples.
-- Package passes `devtools::check()` with zero errors, warnings, and notes.
+### 📚 Documentation
+- Full documentation via `{roxygen2}`.
+- Completed `README.md` with usage examples and installation guide.
+- Package passes `devtools::check()` cleanly with no errors, warnings, or notes.
 
 ---
 
-Stay tuned for future releases with extended model support and more advanced scoring options!
+Stay tuned for future versions featuring:
+- 🔄 Survival and time-series model support
+- 🧪 Calibration and sharpness scoring metrics
+- 📈 Enhanced visual diagnostics
