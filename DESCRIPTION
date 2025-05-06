@@ -21,11 +21,12 @@ Imports:
     ggplot2,
     stats,
     scoringRules,
-    gratia
+    gratia,
+    mgcv,
+    tidyr
 Suggests: 
     MASS,
     tidybayes,
-    mgcv,
     parsnip,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
