@@ -117,3 +117,16 @@ test_that("run_scoriverse executes pipeline correctly with full arguments", {
   expect_true("scores" %in% names(results))
   expect_length(results$scores, 5)
 })
+
+test_that("fitted_samples works for GLM and LM models via gratia", {
+  glm_model <- glm(mpg ~ wt, data = mtcars)
+  lm_model  <- lm(mpg ~ hp, data = mtcars)
+
+  glm_draws <- extract_predictions(glm_model, new_data = mtcars, return_samples = TRUE, n_samples = 10)
+  lm_draws  <- extract_predictions(lm_model, new_data = mtcars, return_samples = TRUE, n_samples = 10)
+
+  expect_true(is.matrix(glm_draws))
+  expect_true(is.matrix(lm_draws))
+  expect_equal(ncol(glm_draws), nrow(mtcars))
+  expect_equal(ncol(lm_draws), nrow(mtcars))
+})
