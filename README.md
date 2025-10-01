@@ -1,4 +1,4 @@
-# DraftScoriverse
+# Scoriverse
 
 **Probabilistic Prediction Scoring and Evaluation Framework**  
 Version: 0.0.1   
@@ -8,7 +8,7 @@ License: MIT
 
 ## Overview
 
-**DraftScoriverse** provides a flexible and unified framework for generating probabilistic predictions and evaluating models using **proper scoring rules**. It supports **outcome-scale sampling**, **posterior predictive draws**, and **modular scoring tools** across a range of statistical modeling approaches, including:
+**Scoriverse** provides a flexible and unified framework for generating probabilistic predictions and evaluating models using **proper scoring rules**. It supports **outcome-scale sampling**, **posterior predictive draws**, and **modular scoring tools** across a range of statistical modeling approaches, including:
 
 - ✅ Generalized Linear Models (GLM)
 - ✅ Generalized Additive Models (GAM)
