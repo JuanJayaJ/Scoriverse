@@ -1,12 +1,12 @@
 # DraftScoriverse
 
 **Probabilistic Prediction Scoring and Evaluation Framework**  
-📦 Version: 0.0.1  
-🧪 License: MIT
+Version: 0.0.1   
+License: MIT
 
 ---
 
-## 🔍 Overview
+## Overview
 
 **DraftScoriverse** provides a flexible and unified framework for generating probabilistic predictions and evaluating models using **proper scoring rules**. It supports **outcome-scale sampling**, **posterior predictive draws**, and **modular scoring tools** across a range of statistical modeling approaches, including:
 
@@ -19,23 +19,23 @@ This framework enhances uncertainty-aware evaluation by offering a consistent AP
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- 🔁 Outcome-scale sampling for GLM, GAM, and Bayesian models  
-- 🎯 Posterior predictive draws using proper random number generation  
-- 🧠 Support for multiple model classes: `glm`, `gam`, `brmsfit`, and `workflow`  
-- 📈 Proper scoring rules:
+- Outcome-scale sampling for GLM, GAM, and Bayesian models  
+- Posterior predictive draws using proper random number generation  
+- Support for multiple model classes: `glm`, `gam`, `brmsfit`, and `workflow`  
+- Proper scoring rules:
   - Continuous Ranked Probability Score (CRPS)
   - Logarithmic Score (Log Score)
   - Dawid-Sebastiani Score (DSS)
   - Interval Score
   - Brier Score
-- 📊 Diagnostic visualizations for prediction and residual analysis  
-- 🧰 Unified wrapper functions for predictions and scoring  
+- Diagnostic visualizations for prediction and residual analysis  
+- Unified wrapper functions for predictions and scoring  
 
 ---
 
-## 🚀 Installation
+## Installation
 
 To install the development version from your local tarball:
 
@@ -45,7 +45,7 @@ install.packages("path/to/DraftScoriverse_0.0.1.tar.gz", repos = NULL, type = "s
 
 ---
 
-## 📦 Usage Example
+## Usage Example
 
 ```r
 library(DraftScoriverse)
@@ -64,7 +64,7 @@ scores <- wrap_scoring("crps", y_true = data$count, predictions = samples)
 
 ---
 
-## 📊 Scoring Functions
+## Scoring Functions
 
 | Score Type    | Required Inputs             | Description                                   |
 |---------------|-----------------------------|-----------------------------------------------|
@@ -76,7 +76,7 @@ scores <- wrap_scoring("crps", y_true = data$count, predictions = samples)
 
 ---
 
-## 📂 Supported Models
+## Supported Models
 
 | Model Type            | Sampling Support                                          |
 |------------------------|----------------------------------------------------------|
@@ -87,7 +87,7 @@ scores <- wrap_scoring("crps", y_true = data$count, predictions = samples)
 
 ---
 
-## ✅ Testing
+## Testing
 
 Run all package tests locally:
 
@@ -103,14 +103,14 @@ devtools::check()
 
 ---
 
-## 📄 License
+## License
 
 This package is released under the **MIT License**.  
 See the `LICENSE` file for full details.
 
 ---
 
-## 🙌 Acknowledgements
+## Acknowledgements
 
 Developed by **Juan Jauanda** as part of a data science capstone project on **model evaluation with probabilistic scoring rules**.
 
